@@ -3,6 +3,9 @@ const app = express();
 const photoRoutes = require('./routes/photoRoutes');
 const authRoutes = require('./routes/authRoutes');
 const cookieParser = require('cookie-parser');
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+const swaggerDocument = YAML.load('./docs/swagger.yaml');
 
 // Middleware
 app.use(express.json());
@@ -12,6 +15,11 @@ app.use(cookieParser());
 // Routes
 app.use('/images', photoRoutes);
 app.use('/auth', authRoutes);
+
+app.use('/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerDocument)
+);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

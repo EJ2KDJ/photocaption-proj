@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const { Model } = require('sequelize');
 const user = require('../models/user');
+const {cacheMiddleware} = require('../middleware/cache');
+const cache = require('../middleware/cache').cache;
+
+exports.cache = cacheMiddleware
 
 // Get all images
 exports.getAllImages = (req, res) => {
@@ -36,7 +40,15 @@ exports.getImageById = async (req, res) => {
       include: { model: User, as: 'user' }
     });
 
-    res.json({ imageUrl: imagePath, captions });
+    res.json({ 
+      imageUrl: imagePath,
+      captions: captions.map(c => ({
+        id: c.id,
+        text: c.captionText,
+        author: c.user?.username,
+        createdAt: c.createdAt
+      }))
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });
@@ -47,21 +59,24 @@ exports.getImageById = async (req, res) => {
 exports.addCaption = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, captionText } = req.body;
-
-    // Verify image exists using ID
-    const imagePath = path.join(__dirname, '../public/assets/images', `imageCaption${id}.jpg`);
-    if (!fs.existsSync(imagePath)) {
-      return res.status(404).json({ error: 'Image not found' });
-    }
-
     const newCaption = await Caption.create({
-      userId,
-      imageId: id, // Store imageId instead of URL
-      captionText
+      userId: req.user.userId,
+      imageId: id,
+      captionText: req.body.captionText
     });
 
-    res.status(201).json({ message: 'Caption added successfully', caption: newCaption });
+    // Clear cached data for this image
+    cache.del(`image_${id}`);
+    console.log(`Cleared cache for image ${id}`);
+
+    res.status(201).json({
+      message: 'Caption added successfully',
+      caption: {
+        id: newCaption.id,
+        text: newCaption.captionText,
+        createdAt: newCaption.createdAt
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server Error' });

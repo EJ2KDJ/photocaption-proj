@@ -1,13 +1,17 @@
 const express = require('express');
 const app = express();
 const photoRoutes = require('./routes/photoRoutes');
+const authRoutes = require('./routes/authRoutes');
+const cookieParser = require('cookie-parser');
 
 // Middleware
 app.use(express.json());
-app.use(express.static('public')); // Serve static files
+app.use(express.static('public'));
+app.use(cookieParser());
 
 // Routes
 app.use('/images', photoRoutes);
+app.use('/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
